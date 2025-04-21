@@ -1,5 +1,5 @@
-from jupyter_ai.personas.base_persona import BasePersona, PersonaDefaults
-from jupyterlab_chat.models import Message
+from jupyter_ai.personas.base_persona import PersonaDefaults
+from .agno_persona import AgnoPersona
 
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
@@ -8,24 +8,18 @@ from agno.tools.yfinance import YFinanceTools
 from agno.tools.reasoning import ReasoningTools
 from agno.memory.v2.memory import Memory
 from agno.memory.v2.db.sqlite import SqliteMemoryDb
-from agno.models.message import Message as AgnoMessage
-
-async def transform_iterator(source_iterator):
-    async for item in source_iterator:
-        yield item.content.replace('$',r'\\$')
 
 
 memory_db = SqliteMemoryDb(table_name="memory", db_file=".memory.db")
 
 
-class TraderPersona(BasePersona):
+class TraderPersona(AgnoPersona):
     """
     The debug persona, the main persona provided by Jupyter AI.
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.agent = Agent(
+    def create_agent(self):
+        return Agent(
             name="Stock Trader",
             model=OpenAIChat(id="gpt-4.1"),
             memory=Memory(db=memory_db),
@@ -77,20 +71,3 @@ class TraderPersona(BasePersona):
             description="A mock persona used for debugging in local dev environments.",
             system_prompt="...",
         )
-
-    def get_role(self, ychat_message):
-        if ychat_message.sender in self.manager.personas:
-            return 'assistant'
-        else:
-            return 'user'
-
-    async def process_message(self, message: Message):
-        history = self.ychat.get_messages()[-4:]
-        messages = [AgnoMessage(content=h.body, name=h.sender, role=self.get_role(h)) for h in history]
-        stream = await self.agent.arun(
-            message.body,
-            user_id=message.sender,
-            session_id=self.ychat.get_id(),
-            messages=messages
-        )
-        await self.forward_reply_stream(transform_iterator(stream))
