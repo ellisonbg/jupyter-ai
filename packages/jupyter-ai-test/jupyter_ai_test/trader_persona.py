@@ -10,7 +10,6 @@ from agno.memory.v2.memory import Memory
 from agno.memory.v2.db.sqlite import SqliteMemoryDb
 from agno.models.message import Message as AgnoMessage
 
-
 async def transform_iterator(source_iterator):
     async for item in source_iterator:
         yield item.content.replace('$',r'\\$')
@@ -19,7 +18,7 @@ async def transform_iterator(source_iterator):
 memory_db = SqliteMemoryDb(table_name="memory", db_file=".memory.db")
 
 
-class DebugPersona(BasePersona):
+class TraderPersona(BasePersona):
     """
     The debug persona, the main persona provided by Jupyter AI.
     """
@@ -27,7 +26,7 @@ class DebugPersona(BasePersona):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.agent = Agent(
-            name="Financial Analyst",
+            name="Stock Trader",
             model=OpenAIChat(id="gpt-4.1"),
             memory=Memory(db=memory_db),
             enable_user_memories=True,
@@ -45,12 +44,7 @@ class DebugPersona(BasePersona):
                     # historical_prices=True
                 ),
                 FinancialDatasetsTools(
-                    enable_company_info = True,
-                    enable_financial_metrics = True,
-                    enable_financial_statements = True,
-                    enable_prices = True,
-                    enable_news = True,
-                    enable_sec_filings = False
+                    enable_prices = True
                 ),
                 ReasoningTools(
                     think=True,
@@ -58,19 +52,16 @@ class DebugPersona(BasePersona):
                     add_instructions=True
                 )
             ],
-            description="You are a financial data specialist that helps analyze financial information for stocks.",
+            description="You are a stock trader that executes trades.",
             instructions=[
-                "When given a financial query:",
-                "1. Use appropriate Financial datasets methods based on the query type",
-                "2. Format financial data clearly and highlight key metrics",
-                "3. For financial statements, compare important metrics with previous periods when relevant",
-                "4. Calculate growth rates and trends when appropriate",
-                "5. Handle errors gracefully and provide meaningful feedback",
-                "6. Don't use tables to show results, instead use bullet points with narrative text.",
-                "7. Give data to support all of your statements.",
-                "8. Track your citations and references and include those in the final report.",
-                "9. Use appropriate emojis in your responses to help the user understand what is going on."
-
+                "When you are given a specific trade or trading strategy:",
+                "1. First provide a concise summary of the exact trades that will be made.",
+                "2. Summarize the current price of the asset, the number of shares or the $ amount of the transaction.",
+                "3. Summarize the type of transaction.",
+                "5. Before you move forward with the actual trade, ask the user to reply with CONFIRM",
+                "6. If you see a message history with CONFIRM and a summary of a trade, execute the trade.",
+                "7. Instead of actually executing the trade on the market. Pretend to do so (this is a demo) and summarize the transaction."
+                "8. Use appropriate emojis in your responses to help the user understand what is going on."
             ],
             markdown=True,
             show_tool_calls=True,
@@ -81,9 +72,9 @@ class DebugPersona(BasePersona):
     @property
     def defaults(self):
         return PersonaDefaults(
-            name="Analyst",
+            name="Trader",
             avatar_path="/api/ai/static/jupyternaut.svg",
-            description="A trader persona.",
+            description="A mock persona used for debugging in local dev environments.",
             system_prompt="...",
         )
 
@@ -103,4 +94,3 @@ class DebugPersona(BasePersona):
             messages=messages
         )
         await self.forward_reply_stream(transform_iterator(stream))
-
